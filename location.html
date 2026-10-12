@@ -49,16 +49,31 @@
   </div>
 </nav>
 
-<!-- MAP -->
+<!-- MAP : 지도 API 연결 전까지 준비중 화면 (연결 후 아래 주석의 원본 블록으로 교체) -->
+<section class="sec loc">
+  <div class="wrap">
+    <div class="loc-soon reveal">
+      <div class="loc-soon-ico" aria-hidden="true">&#9881;</div>
+      <h2>준비중입니다</h2>
+      <p>오시는 길 지도 서비스는 현재 준비중입니다.<br>빠른 시일 내에 찾아뵙겠습니다.</p>
+      <dl>
+        <div><dt>본사</dt><dd>충청남도 천안시 동남구 신촌4로 42, 203호 (신방동, 신방현대프라자)</dd></div>
+        <div><dt>평택지사</dt><dd>경기도 평택시 청북읍 백봉길 135</dd></div>
+      </dl>
+    </div>
+  </div>
+</section>
+<!-- 원본 지도 블록 (지도 연결 시 복원)
+<!-- MAP --&gt;
 <section class="sec loc">
   <div class="wrap">
     <div class="loc-bar reveal">
-      <!-- 지사 선택 -->
+      <!-- 지사 선택 --&gt;
       <div class="seg" id="branchTabs" role="tablist" aria-label="사업장 선택">
         <button type="button" class="on" data-b="0" role="tab">본사 (천안)</button>
         <button type="button" data-b="1" role="tab">평택지사</button>
       </div>
-      <!-- 지도 종류 선택 -->
+      <!-- 지도 종류 선택 --&gt;
       <div class="seg" id="mapTabs" role="tablist" aria-label="지도 선택">
         <button type="button" class="on" data-m="naver" role="tab">네이버 지도</button>
         <button type="button" data-m="kakao" role="tab">카카오맵</button>
@@ -84,6 +99,7 @@
     </div>
   </div>
 </section>
+-->
 
 </main>
 
@@ -107,17 +123,14 @@
 </footer>
 <button class="totop" id="totop" aria-label="맨 위로">&#8593;</button>
 
-<!--
-  ▼ 지도 API 스크립트 (발급받은 키로 교체하세요) ▼
+<script src="js/sub.js"></script>
+<!-- 지도 연결 시 아래 주석을 풀고, 발급받은 키로 교체하세요
   - 네이버: Naver Cloud Platform > Maps(Dynamic Map) 의 Client ID  → YOUR_NAVER_CLIENT_ID
   - 카카오: Kakao Developers > 앱 > JavaScript 키                    → YOUR_KAKAO_JS_KEY
-  - 사용할 도메인(및 테스트용 http://localhost)을 각 콘솔에 등록해야 동작합니다.
--->
 <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=YOUR_NAVER_CLIENT_ID&submodule=geocoder"></script>
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_KAKAO_JS_KEY&libraries=services&autoload=false"></script>
-
-<script src="js/sub.js"></script>
 <script src="js/map.js"></script>
+-->
 <script src="js/sitemap.js"></script>
 <script src="js/soon.js"></script>
 </body>

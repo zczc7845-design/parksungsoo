@@ -126,16 +126,17 @@
   .stat b em { font-style: normal; color: var(--red); font-size: .5em; margin-left: 2px; }
   .stat > span { display: block; margin-top: 10px; font-size: 14px; color: var(--muted); }
   .about-visual { grid-column: 2; grid-row: 1; min-height: 280px; border-radius: 16px; background: url(../img/about_bg.jpg) 25% center / cover, var(--navy); position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: flex-end; padding: 28px; color: #fff; }
-  .about-visual::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgba(0,20,64,.9), rgba(0,20,64,.2) 70%); opacity: 0; transition: opacity .6s ease; }
+  .about-visual::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgba(0,20,64,.9), rgba(0,20,64,.2) 70%); opacity: .6; transition: opacity .6s ease; }
   .about-visual div { position: relative; font-size: 22px; font-weight: 800; line-height: 1.4; }
-  .about-visual div::before { content: ""; display: block; width: 0; height: 3px; margin-bottom: 14px; background: var(--red); transition: width .8s cubic-bezier(.22,.61,.36,1); }
+  .about-visual div::before { content: ""; display: block; width: 36px; height: 3px; margin-bottom: 14px; background: var(--red); transition: width .8s cubic-bezier(.22,.61,.36,1); }
   .about-visual small { display: block; font-size: 14px; font-weight: 400; margin-top: 6px; }
   /* 글자는 평소엔 숨김. 호버하면 영문은 위에서, 한글은 아래에서 한 글자씩 페이드 인 */
-  .about-visual .ch { display: inline-block; white-space: pre; opacity: 0; transition: opacity .25s ease, transform .25s ease; }
+  .about-visual .ch { display: inline-block; white-space: pre; opacity: .3; transition: opacity .25s ease, transform .25s ease; }
+  .about-visual .w { display: inline-block; white-space: nowrap; }
   .about-visual .en .ch { transform: translateY(-20px); }
   .about-visual small .ch { transform: translateY(16px); }
   .about-visual:hover::before, .about-visual.show::before { opacity: 1; }
-  .about-visual:hover div::before, .about-visual.show div::before { width: 60px; }
+  .about-visual:hover div::before, .about-visual.show div::before { width: 80px; }
   .about-visual:hover .ch, .about-visual.show .ch { opacity: 1; transform: none; transition: opacity .6s ease, transform .7s cubic-bezier(.22,.61,.36,1); }
   .about-visual:hover .en .ch, .about-visual.show .en .ch { transition-delay: calc(var(--i) * 45ms); }
   .about-visual:hover small .ch, .about-visual.show small .ch { transition-delay: calc(.6s + var(--i) * 30ms); }
@@ -174,7 +175,7 @@
   .bcard .img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,20,64,.88), rgba(0,20,64,.1) 65%); }
   .bcard .in { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; padding: 32px 30px; opacity: 0; transform: translateY(18px); transition: opacity .4s ease, transform .4s ease; }
   .bcard.on .in { opacity: 1; transform: none; transition: opacity .8s ease .45s, transform .8s var(--ease) .45s; }
-  .bcard .no { position: absolute; z-index: 2; top: 18px; left: 26px; font-size: 84px; font-weight: 900; line-height: 1; letter-spacing: -2px; color: transparent; -webkit-text-stroke: 1.5px rgba(255,255,255,.75); transition: color .6s ease; }
+  .bcard .no { position: absolute; z-index: 2; top: 18px; left: 26px; font-size: 84px; font-weight: 900; line-height: 1; letter-spacing: -2px; color: #fff; -webkit-text-stroke: 0; text-shadow: 0 2px 12px rgba(0,20,64,.35); }
   .bcard.on:hover .no { color: #fff; }
   .bcard h3 { margin: 0; font-size: 26px; line-height: 1.35; }
   .bcard h3::before { content: ""; display: block; width: 28px; height: 3px; background: var(--red); margin-bottom: 18px; transition: width .9s var(--ease) .6s; }
@@ -312,7 +313,7 @@
   .smap-close i:nth-child(1) { transform: rotate(45deg); }
   .smap-close i:nth-child(2) { transform: rotate(-45deg); }
   .smap-close:hover { background: var(--red); border-color: var(--red); transform: rotate(90deg); }
-  .smap-title { margin: 7vh 0 5vh; font-size: clamp(44px, 9vw, 120px); font-weight: 900; line-height: 1; letter-spacing: 6px; color: transparent; -webkit-text-stroke: 1.5px rgba(255,255,255,.35); }
+  .smap-title { margin: 7vh 0 5vh; font-size: clamp(44px, 9vw, 120px); font-weight: 900; line-height: 1; letter-spacing: 6px; color: rgba(255,255,255,.14); -webkit-text-stroke: 0; }
   .smap-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; padding-bottom: 60px; }
   .smap-col small { display: block; font-size: 13px; letter-spacing: 4px; color: #ff8a8a; font-weight: 500; }
   .smap-col h3 { margin: 8px 0 22px; padding-bottom: 20px; font-size: 28px; font-weight: 900; border-bottom: 1px solid rgba(255,255,255,.25); position: relative; }
@@ -550,3 +551,63 @@
   .soon-box h2 { margin: 0 0 10px; font-size: 24px; font-weight: 900; color: var(--navy); }
   .soon-box p { margin: 0 0 26px; font-size: 15px; line-height: 1.7; color: var(--muted); }
   .soon-box .btn { min-width: 120px; padding: 12px 28px; font-size: 15px; cursor: pointer; }
+
+  /* ===== 모바일 최적화 (아이폰 SE 320~375px 포함) ===== */
+  @media (max-width: 800px) {
+    /* 서브페이지 탭: 스크롤 없이 한 줄에 모두 표시 */
+    .sub-tabs .wrap { overflow: visible; gap: 0; padding: 0 8px; }
+    .sub-tabs a { flex: 1 1 auto; min-width: 0; padding: 16px 4px; font-size: clamp(12px, 3.6vw, 15px); text-align: center; white-space: nowrap; }
+    /* 요약 카드: 2열로 압축 (홀수 개면 마지막/첫 카드가 한 줄 전체) */
+    .rsum { grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 36px; }
+    .rsum > div { padding: 20px 10px; }
+    .rsum b { font-size: 28px; white-space: nowrap; }
+    .rsum span { font-size: 13px; }
+    .rsum > div:first-child:nth-last-child(3) { grid-column: 1 / -1; }
+    /* 4개일 때: 마지막(수행 기간) 카드를 맨 위 한 줄로, 나머지 3개는 한 줄에 */
+    .rsum:has(> div:nth-child(4)) { grid-template-columns: repeat(3, 1fr); }
+    .rsum:has(> div:nth-child(4)) > div:last-child { grid-column: 1 / -1; order: -1; }
+    .rsum:has(> div:nth-child(4)) > div:not(:last-child) b { font-size: 24px; }
+    /* 오시는 길: 라벨 칸이 세로로 늘어나던 문제 */
+    .loc-info dt { flex: none; }
+    .loc-info dl > div { gap: 0; }
+    .loc-info dl { gap: 14px; width: 100%; }
+    .loc-links { width: 100%; }
+    .loc-links .btn { flex: 1 1 100%; text-align: center; }
+    .seg { max-width: 100%; }
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 0 20px; }
+    .eyebrow { font-size: 15px; letter-spacing: 6px; }
+    .sec-head { margin-bottom: 48px; }
+    .sub-hero h1 { font-size: 32px; }
+    .tl-year { font-size: 32px; }
+  }
+  @media (max-width: 400px) {
+    .slide h1 { font-size: 28px; }
+    .slide p { font-size: 15px; }
+    .sec-title { font-size: 30px; }
+    .rsum b { font-size: 24px; }
+    .hero-btns .btn { padding: 13px 4px; font-size: 14px; }
+    .tl-item li { padding: 12px 14px; font-size: 14px; }
+    .stat b { font-size: 30px; }
+    .loc-links .btn { padding: 14px 8px; font-size: 14px; }
+  }
+
+  /* 모바일/태블릿: 좌우에서 밀려 들어오면 화면 밖으로 삐져나와 보이므로 About은 아래에서 올라오게 */
+  @media (max-width: 1024px) {
+    .about .reveal:not(.in), .about .about-visual.reveal:not(.in) { transform: translateY(40px); }
+    .about-grid > * { min-width: 0; max-width: 100%; }
+    .about-visual { width: 100%; }
+  }
+
+  @media (max-width: 640px) { .about-visual { padding: 22px; } .about-visual div { font-size: 19px; } .about-visual small { font-size: 13px; } }
+
+  /* ===== 오시는 길 준비중 ===== */
+  .loc-soon { max-width: 640px; margin: 0 auto; padding: 56px 32px; border-radius: 16px; background: var(--gray); text-align: center; }
+  .loc-soon-ico { width: 72px; height: 72px; margin: 0 auto 20px; border-radius: 50%; background: #fff; color: var(--red); font-size: 36px; line-height: 72px; }
+  .loc-soon h2 { margin: 0 0 10px; font-size: 28px; font-weight: 900; color: var(--navy); }
+  .loc-soon p { margin: 0 0 28px; font-size: 16px; line-height: 1.7; color: var(--muted); }
+  .loc-soon dl { margin: 0; padding-top: 24px; border-top: 1px solid rgba(0,0,0,.1); display: grid; gap: 10px; text-align: left; }
+  .loc-soon dl div { display: flex; gap: 16px; font-size: 15px; }
+  .loc-soon dt { flex: none; width: 64px; font-weight: 700; color: var(--navy); }
+  .loc-soon dd { margin: 0; color: var(--muted); }

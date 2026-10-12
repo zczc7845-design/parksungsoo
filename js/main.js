@@ -36,13 +36,18 @@
       return '<span class="ch" aria-hidden="true" style="--i:' + i + '">' + (c === ' ' ? '&nbsp;' : c.replace('&', '&amp;')) + '</span>';
     }).join('');
   });
-  /* 회사소개 비주얼: 호버 시 글자 단위로 나타나도록 분리 (영문은 위에서, 한글은 아래에서) */
+  /* 회사소개 비주얼: 호버 시 글자 단위로 나타나도록 분리 (영문은 위에서, 한글은 아래에서)
+     글자는 단어(.w) 단위로 묶어서, 줄바꿈이 단어 사이에서만 일어나도록 함 */
   $$('.about-visual .en, .about-visual small').forEach(function (el) {
-    var txt = el.textContent;
+    var txt = el.textContent, n = 0;
     el.setAttribute('aria-label', txt);
-    el.innerHTML = Array.prototype.map.call(txt, function (c, i) {
-      return '<span class="ch" aria-hidden="true" style="--i:' + i + '">' + (c === ' ' ? '&nbsp;' : c) + '</span>';
-    }).join('');
+    el.innerHTML = txt.split(' ').map(function (word) {
+      var html = '<span class="w">' + Array.prototype.map.call(word, function (c) {
+        return '<span class="ch" aria-hidden="true" style="--i:' + (n++) + '">' + c + '</span>';
+      }).join('') + '</span>';
+      n++;
+      return html;
+    }).join(' ');
   });
   /* 회사소개 비주얼: 마우스 없이도 글자가 나왔다가 사라지기를 반복 */
   var aboutVisual = $('.about-visual');
