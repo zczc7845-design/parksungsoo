@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>버블 팝 카메라</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --panel: rgba(12, 18, 40, 0.82);
+    --text: #f4f6ff;
+    --muted: #a9b2d6;
+    --accent: #4fd1ff;
+    --gold: #ffd34d;
+    --danger: #ff5a6e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text);
+    font-family: "Noto Sans KR", system-ui, -apple-system, sans-serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0; }
+  video { display: none; }
+  canvas#view { width: 100%; height: 100%; display: block; }
+  .hud { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between;
+    padding: 12px 16px; font-weight: 700; font-size: clamp(16px, 3.5vw, 24px); pointer-events: none;
+    text-shadow: 0 2px 6px rgba(0,0,0,.6); }
+  .hud .lives { color: var(--danger); letter-spacing: 2px; }
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(5, 8, 20, 0.7); padding: 16px; }
+  .overlay.hidden { display: none; }
+  .card { background: var(--panel); border: 1px solid rgba(255,255,255,.12); border-radius: 18px;
+    padding: 28px 24px; max-width: 440px; width: 100%; text-align: center; backdrop-filter: blur(8px); }
+  .card h1 { font-size: 30px; margin-bottom: 12px; }
+  .card p { color: var(--muted); line-height: 1.6; margin-bottom: 10px; font-size: 15px; }
+  .legend { display: flex; justify-content: center; gap: 16px; margin: 16px 0; flex-wrap: wrap; font-size: 14px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; }
+  button { margin-top: 12px; background: var(--accent); color: #031623; border: 0; border-radius: 999px;
+    padding: 14px 32px; font-size: 18px; font-weight: 800; cursor: pointer; }
+  button:active { transform: scale(.97); }
+  .err { color: var(--danger); margin-top: 12px; font-size: 14px; }
+  .best { color: var(--gold); font-weight: 700; }
+  label.toggle { display: block; margin-top: 10px; color: var(--muted); font-size: 13px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="cam" playsinline muted></video>
+  <canvas id="view"></canvas>
+</div>
+
+<div class="hud">
+  <div>점수 <span id="score">0</span></div>
+  <div>⏱ <span id="time">60</span></div>
+  <div class="lives" id="lives">♥♥♥</div>
+</div>
+
+<div class="overlay" id="startScreen">
+  <div class="card">
+    <h1>🫧 버블 팝 카메라</h1>
+    <p>카메라 앞에서 손을 흔들어 화면 속 버블을 터뜨리세요!<br>움직임이 감지된 곳의 버블이 터집니다.</p>
+    <div class="legend">
+      <span><i class="dot" style="background:#4fd1ff"></i>+10</span>
+      <span><i class="dot" style="background:#ffd34d"></i>+50</span>
+      <span><i class="dot" style="background:#ff5a6e"></i>폭탄! ♥-1</span>
+    </div>
+    <p>제한시간 60초 · 폭탄 3번 건드리면 끝</p>
+    <p class="best">최고 점수: <span id="bestStart">0</span></p>
+    <button id="startBtn">카메라 켜고 시작</button>
+    <label class="toggle"><input type="checkbox" id="showMotion"> 움직임 감지 영역 보기</label>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="endScreen">
+  <div class="card">
+    <h1 id="endTitle">게임 종료</h1>
+    <p style="font-size:22px;color:var(--text)">점수 <b id="finalScore">0</b></p>
+    <p class="best" id="bestEnd"></p>
+    <button id="retryBtn">다시 하기</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const video = document.getElementById('cam');
+  const canvas = document.getElementById('view');
+  const ctx = canvas.getContext('2d');
+  const $ = id => document.getElementById(id);
+
+  // 움직임 감지는 저해상도 그리드에서 수행 (빠르고 가벼움)
+  const GW = 80, GH = 60;
+  const work = document.createElement('canvas');
+  work.width = GW; work.height = GH;
+  const wctx = work.getContext('2d', { willReadFrequently: true });
+  let prevGray = null;
+  const motion = new Float32Array(GW * GH); // 0..1, 잔상 포함
+
+  const GAME_TIME = 60;
+  let W = 0, H = 0, dpr = 1;
+  let bubbles = [], particles = [], popups = [];
+  let score = 0, lives = 3, timeLeft = GAME_TIME, running = false;
+  let lastT = 0, spawnTimer = 0, stream = null;
+  let best = 0;
+  try { best = +localStorage.getItem('bubblePopBest') || 0; } catch (e) {}
+  $('bestStart').textContent = best;
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // 화면에 비디오를 꽉 채우는(cover) 영역 계산
+  function coverRect() {
+    const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
+    const s = Math.max(W / vw, H / vh);
+    const dw = vw * s, dh = vh * s;
+    return { x: (W - dw) / 2, y: (H - dh) / 2, w: dw, h: dh };
+  }
+
+  function updateMotion() {
+    if (video.readyState < 2) return;
+    // 미러링 하여 그리드에 그림 (화면과 좌표 일치)
+    wctx.save();
+    wctx.translate(GW, 0); wctx.scale(-1, 1);
+    wctx.drawImage(video, 0, 0, GW, GH);
+    wctx.restore();
+    const data = wctx.getImageData(0, 0, GW, GH).data;
+    const gray = new Uint8Array(GW * GH);
+    for (let i = 0, j = 0; i < gray.length; i++, j += 4) {
+      gray[i] = (data[j] * 0.3 + data[j + 1] * 0.59 + data[j + 2] * 0.11) | 0;
+    }
+    if (prevGray) {
+      for (let i = 0; i < gray.length; i++) {
+        const d = Math.abs(gray[i] - prevGray[i]);
+        const m = d > 28 ? 1 : 0;
+        motion[i] = Math.max(m, motion[i] * 0.6);
+      }
+    }
+    prevGray = gray;
+  }
+
+  // 화면 좌표 원 안의 움직임 비율
+  function motionAt(x, y, r) {
+    const cr = coverRect();
+    const gx0 = Math.floor(((x - r - cr.x) / cr.w) * GW);
+    const gx1 = Math.ceil(((x + r - cr.x) / cr.w) * GW);
+    const gy0 = Math.floor(((y - r - cr.y) / cr.h) * GH);
+    const gy1 = Math.ceil(((y + r - cr.y) / cr.h) * GH);
+    let sum = 0, n = 0;
+    for (let gy = Math.max(0, gy0); gy < Math.min(GH, gy1); gy++) {
+      for (let gx = Math.max(0, gx0); gx < Math.min(GW, gx1); gx++) {
+        sum += motion[gy * GW + gx] >= 0.99 ? 1 : 0; n++;
+      }
+    }
+    return n ? sum / n : 0;
+  }
+
+  function spawn() {
+    const roll = Math.random();
+    const type = roll < 0.12 ? 'gold' : roll < 0.3 ? 'bomb' : 'normal';
+    const base = Math.min(W, H);
+    const r = type === 'gold' ? base * 0.05 : base * (0.06 + Math.random() * 0.03);
+    const margin = r + 10;
+    bubbles.push({
+      x: margin + Math.random() * (W - margin * 2),
+      y: H + r,
+      r, type,
+      vy: -(H * (0.12 + Math.random() * 0.1)) * (type === 'gold' ? 1.6 : 1),
+      wob: Math.random() * Math.PI * 2,
+      age: 0, armed: 0.35, // 등장 직후 잠깐은 터지지 않음
+    });
+  }
+
+  const COLORS = { normal: '#4fd1ff', gold: '#ffd34d', bomb: '#ff5a6e' };
+
+  function burst(b) {
+    const n = b.type === 'bomb' ? 26 : 16;
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, s = 120 + Math.random() * 260;
+      particles.push({ x: b.x, y: b.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.7, c: COLORS[b.type] });
+    }
+  }
+
+  function pop(b) {
+    burst(b);
+    if (b.type === 'bomb') {
+      lives--; flash = 0.35;
+      popups.push({ x: b.x, y: b.y, t: '💥', life: 1, c: COLORS.bomb });
+      if (navigator.vibrate) navigator.vibrate(150);
+      if (lives <= 0) endGame('폭탄을 너무 많이 건드렸어요!');
+    } else {
+      const pts = b.type === 'gold' ? 50 : 10;
+      score += pts;
+      popups.push({ x: b.x, y: b.y, t: '+' + pts, life: 1, c: COLORS[b.type] });
+    }
+    beep(b.type);
+    updateHud();
+  }
+
+  let actx = null;
+  function beep(type) {
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type === 'bomb' ? 'sawtooth' : 'sine';
+      const f = type === 'bomb' ? 120 : type === 'gold' ? 1200 : 600 + Math.random() * 300;
+      o.frequency.setValueAtTime(f, actx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(type === 'bomb' ? 50 : f * 1.8, actx.currentTime + 0.15);
+      g.gain.setValueAtTime(0.15, actx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.2);
+      o.connect(g).connect(actx.destination);
+      o.start(); o.stop(actx.currentTime + 0.22);
+    } catch (e) {}
+  }
+
+  let flash = 0;
+
+  function updateHud() {
+    $('score').textContent = score;
+    $('time').textContent = Math.ceil(timeLeft);
+    $('lives').textContent = '♥'.repeat(Math.max(0, lives)) + '♡'.repeat(3 - Math.max(0, lives));
+  }
+
+  function drawBubble(b) {
+    const c = COLORS[b.type];
+    ctx.save();
+    ctx.globalAlpha = b.age < b.armed ? 0.5 : 1;
+    const g = ctx.createRadialGradient(b.x - b.r * 0.35, b.y - b.r * 0.35, b.r * 0.1, b.x, b.y, b.r);
+    g.addColorStop(0, 'rgba(255,255,255,0.85)');
+    g.addColorStop(0.35, c + 'aa');
+    g.addColorStop(1, c + '33');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = c; ctx.stroke();
+    if (b.type === 'bomb' || b.type === 'gold') {
+      ctx.font = `${b.r}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(b.type === 'bomb' ? '💣' : '⭐', b.x, b.y + 2);
+    }
+    ctx.restore();
+  }
+
+  function frame(t) {
+    const dt = Math.min(0.05, (t - lastT) / 1000 || 0);
+    lastT = t;
+    updateMotion();
+
+    // 배경: 미러링된 카메라
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    if (video.readyState >= 2) {
+      const cr = coverRect();
+      ctx.save();
+      ctx.translate(W, 0); ctx.scale(-1, 1);
+      ctx.drawImage(video, W - cr.x - cr.w, cr.y, cr.w, cr.h);
+      ctx.restore();
+      ctx.fillStyle = 'rgba(5,10,30,0.25)'; ctx.fillRect(0, 0, W, H);
+
+      if ($('showMotion').checked) {
+        const cw = cr.w / GW, ch = cr.h / GH;
+        ctx.fillStyle = 'rgba(79,209,255,0.35)';
+        for (let i = 0; i < motion.length; i++) {
+          if (motion[i] > 0.5) ctx.fillRect(cr.x + (i % GW) * cw, cr.y + ((i / GW) | 0) * ch, cw, ch);
+        }
+      }
+    }
+
+    if (running) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { timeLeft = 0; endGame('시간 종료!'); }
+      // 시간이 지날수록 더 자주 생성
+      const rate = 0.9 - (1 - timeLeft / GAME_TIME) * 0.55;
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) { spawn(); spawnTimer = rate; }
+      updateHud();
+    }
+
+    for (let i = bubbles.length - 1; i >= 0; i--) {
+      const b = bubbles[i];
+      b.age += dt; b.wob += dt * 2;
+      b.y += b.vy * dt;
+      b.x += Math.sin(b.wob) * 20 * dt;
+      if (running && b.age >= b.armed && motionAt(b.x, b.y, b.r * 0.8) > 0.18) {
+        bubbles.splice(i, 1); pop(b); continue;
+      }
+      if (b.y < -b.r) { bubbles.splice(i, 1); continue; }
+      drawBubble(b);
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.life -= dt; if (p.life <= 0) { particles.splice(i, 1); continue; }
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 400 * dt;
+      ctx.globalAlpha = p.life / 0.7; ctx.fillStyle = p.c;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    for (let i = popups.length - 1; i >= 0; i--) {
+      const p = popups[i];
+      p.life -= dt; if (p.life <= 0) { popups.splice(i, 1); continue; }
+      p.y -= 60 * dt;
+      ctx.globalAlpha = p.life; ctx.fillStyle = p.c;
+      ctx.font = 'bold 28px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText(p.t, p.x, p.y);
+    }
+    ctx.globalAlpha = 1;
+
+    if (flash > 0) {
+      flash -= dt;
+      ctx.fillStyle = `rgba(255,60,80,${Math.max(0, flash)})`; ctx.fillRect(0, 0, W, H);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  function startGame() {
+    score = 0; lives = 3; timeLeft = GAME_TIME; spawnTimer = 0.5;
+    bubbles = []; particles = []; popups = [];
+    running = true;
+    $('startScreen').classList.add('hidden');
+    $('endScreen').classList.add('hidden');
+    updateHud();
+  }
+
+  function endGame(msg) {
+    if (!running) return;
+    running = false;
+    bubbles = [];
+    const isBest = score > best;
+    if (isBest) { best = score; try { localStorage.setItem('bubblePopBest', best); } catch (e) {} }
+    $('endTitle').textContent = msg;
+    $('finalScore').textContent = score;
+    $('bestEnd').textContent = isBest ? '🎉 새 최고 기록!' : '최고 점수: ' + best;
+    $('endScreen').classList.remove('hidden');
+  }
+
+  async function initCamera() {
+    if (stream) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('이 브라우저는 카메라를 지원하지 않아요. (HTTPS 주소에서 열어주세요)');
+    }
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false,
+    });
+    video.srcObject = stream;
+    await video.play();
+  }
+
+  $('startBtn').addEventListener('click', async () => {
+    $('err').textContent = '';
+    try {
+      await initCamera();
+      startGame();
+    } catch (e) {
+      $('err').textContent = e.name === 'NotAllowedError'
+        ? '카메라 권한이 거부되었어요. 브라우저 설정에서 허용해주세요.'
+        : (e.message || '카메라를 켤 수 없어요.');
+    }
+  });
+  $('retryBtn').addEventListener('click', startGame);
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
